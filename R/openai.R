@@ -59,9 +59,9 @@ openai_chat_completion <- function(
     req |>
     httr2::req_headers(`Content-Type` = "application/json",
                        Authorization  = glue::glue("Bearer {api_key}")) |>
-    httr2::req_body_json(list(model = model,
-                              messages = messages,
-                              temperature = api_params$temperature)) |>
+    httr2::req_body_json(c(list(model = model,
+                                messages = messages),
+                           api_params)) |>
     httr2::req_perform()
 
   if (httr2::resp_status(resp) != 200) {

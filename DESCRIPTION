@@ -1,6 +1,6 @@
 Package: ellipsellm
 Title: Query LLM APIs from R
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R:
     person("Hugues-Étienne", "Moisan-Plante", , "huguesmp@outlook.com", role = c("aut", "cre"))
 Description: Provide a few simple functions to send prompts to LLM providers and process responses.
