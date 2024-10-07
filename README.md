@@ -13,6 +13,12 @@ You can install the development version of ellipsellm like so:
 r$> remotes::install_github("ellipse-science/ellipsellm")
 ```
 
+To interact with the OpenAI API, you need an API key in your `.Renviron` in the form:
+
+```r
+OPENAI_API_KEY=<YOUR_API_KEY_HERE>
+```
+
 This package is close to the API, so perusing the [documentation](https://platform.openai.com/docs/api-reference/chat) might help.
 
 ## Example
