@@ -54,22 +54,27 @@ openai_chat_completion <- function(
   api_params = list(temperature = 0.8),
   api_key = get_openai_api_key()
 ) {
-  req <- httr2::request("https://api.openai.com/v1/chat/completions")
-  resp <-
-    req |>
-    httr2::req_headers(`Content-Type` = "application/json",
-                       Authorization  = glue::glue("Bearer {api_key}")) |>
-    httr2::req_body_json(c(list(model = model,
-                                messages = messages),
-                           api_params)) |>
-    httr2::req_perform()
+  tryCatch({
+    req <- httr2::request("https://api.openai.com/v1/chat/completions")
+    resp <-
+      req |>
+      httr2::req_headers(`Content-Type` = "application/json",
+                         Authorization  = glue::glue("Bearer {api_key}")) |>
+      httr2::req_body_json(c(list(model = model,
+                                  messages = messages),
+                             api_params)) |>
+      httr2::req_perform()
 
-  if (httr2::resp_status(resp) != 200) {
-    cli::cli_alert_danger("HTTP request failed. See the response for details")
-    return(resp)
-  } else {
-    return(openai_process_response(resp))
-  }
+    if (httr2::resp_status(resp) != 200) {
+      cli::cli_alert_danger("HTTP request failed. See the response for details")
+      return(resp)
+    } else {
+      return(openai_process_response(resp))
+    }
+  }, error = function(e) {
+    cli::cli_alert_danger("An error occurred when invoking openai API: {e$message}")
+    return(NULL)
+  })
 }
 
 openai_process_response <- function(resp) {
