@@ -54,24 +54,25 @@ openai_chat_completion <- function(
   api_params = list(temperature = 0.8),
   api_key = get_openai_api_key()
 ) {
-  tryCatch({
-    req <- httr2::request("https://api.openai.com/v1/chat/completions")
-    resp <-
-      req |>
-      httr2::req_headers(`Content-Type` = "application/json",
-                        Authorization  = glue::glue("Bearer {api_key}")) |>
-      httr2::req_body_json(c(list(model = model,
-                                  messages = messages),
-                            api_params)) |>
-      httr2::req_perform()
+  # First create the request with all parameters
+  req <- httr2::request("https://api.openai.com/v1/chat/completions") |>
+    httr2::req_headers(`Content-Type` = "application/json",
+                      Authorization = glue::glue("Bearer {api_key}")) |>
+    httr2::req_body_json(c(list(model = model,
+                              messages = messages),
+                          api_params)) |>
+    httr2::req_error(is_error = \(resp) FALSE)  # This prevents auto-error on HTTP errors
 
-    if (httr2::resp_status(resp) != 200) {
+  tryCatch({
+    resp <- httr2::req_perform(req)
+    
+    status <- httr2::resp_status(resp)
+    if (status != 200) {
       error_content <- httr2::resp_body_json(resp)
-      cli::cli_alert_danger("HTTP request failed with status {httr2::resp_status(resp)}")
+      cli::cli_alert_danger("HTTP request failed with status {status}")
       cli::cli_alert_info("Error message: {error_content$error$message}")
       cli::cli_alert_info("Error type: {error_content$error$type}")
       
-      # Some errors include additional details
       if (!is.null(error_content$error$param)) {
         cli::cli_alert_info("Error parameter: {error_content$error$param}")
       }
@@ -83,20 +84,9 @@ openai_chat_completion <- function(
     } else {
       return(openai_process_response(resp))
     }
-  }, http_error = function(e) {
-    # For HTTP errors that prevent response parsing
-    error_body <- rawToChar(e$body)
-    tryCatch({
-      error_content <- jsonlite::fromJSON(error_body)
-      cli::cli_alert_danger("API Error: {error_content$error$message}")
-      cli::cli_alert_info("Error type: {error_content$error$type}")
-      return(error_content)
-    }, error = function(parse_error) {
-      # If JSON parsing fails, return raw error
-      cli::cli_alert_danger("An error occurred: {e$message}")
-      cli::cli_alert_info("Raw error response: {error_body}")
-      return(NULL)
-    })
+  }, error = function(e) {
+    cli::cli_alert_danger("An unexpected error occurred: {e$message}")
+    return(NULL)
   })
 }
 
