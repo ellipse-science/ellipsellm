@@ -59,21 +59,44 @@ openai_chat_completion <- function(
     resp <-
       req |>
       httr2::req_headers(`Content-Type` = "application/json",
-                         Authorization  = glue::glue("Bearer {api_key}")) |>
+                        Authorization  = glue::glue("Bearer {api_key}")) |>
       httr2::req_body_json(c(list(model = model,
                                   messages = messages),
-                             api_params)) |>
+                            api_params)) |>
       httr2::req_perform()
 
     if (httr2::resp_status(resp) != 200) {
-      cli::cli_alert_danger("HTTP request failed. See the response for details")
-      return(resp)
+      error_content <- httr2::resp_body_json(resp)
+      cli::cli_alert_danger("HTTP request failed with status {httr2::resp_status(resp)}")
+      cli::cli_alert_info("Error message: {error_content$error$message}")
+      cli::cli_alert_info("Error type: {error_content$error$type}")
+      
+      # Some errors include additional details
+      if (!is.null(error_content$error$param)) {
+        cli::cli_alert_info("Error parameter: {error_content$error$param}")
+      }
+      if (!is.null(error_content$error$code)) {
+        cli::cli_alert_info("Error code: {error_content$error$code}")
+      }
+      
+      return(error_content)
     } else {
       return(openai_process_response(resp))
     }
-  }, error = function(e) {
-    cli::cli_alert_danger("An error occurred when invoking openai API: {e$message}")
-    return(NULL)
+  }, http_error = function(e) {
+    # For HTTP errors that prevent response parsing
+    error_body <- rawToChar(e$body)
+    tryCatch({
+      error_content <- jsonlite::fromJSON(error_body)
+      cli::cli_alert_danger("API Error: {error_content$error$message}")
+      cli::cli_alert_info("Error type: {error_content$error$type}")
+      return(error_content)
+    }, error = function(parse_error) {
+      # If JSON parsing fails, return raw error
+      cli::cli_alert_danger("An error occurred: {e$message}")
+      cli::cli_alert_info("Raw error response: {error_body}")
+      return(NULL)
+    })
   })
 }
 
